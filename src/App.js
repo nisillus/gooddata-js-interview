@@ -4,97 +4,165 @@ import React, { Component } from 'react';
 import '@gooddata/react-components/styles/css/main.css';
 
 import { ColumnChart } from '@gooddata/react-components';
+import Dropdown from './Dropdown';
+import { DATE_ATTRIBUTE_IN_MONTHS, GROSS_PROFIT_MEASURE, DATE_ATTRIBUTE, PROJECT_ID } from './envConstants';
 
-const grossProfitMeasure = '/gdc/md/xms7ga4tf3g3nzucd8380o2bev8oeknp/obj/6877';
-const dateAttributeInMonths = '/gdc/md/xms7ga4tf3g3nzucd8380o2bev8oeknp/obj/2142';
-const dateAttribute = '/gdc/md/xms7ga4tf3g3nzucd8380o2bev8oeknp/obj/2180';
+const MONTH_LIST = [{
+    value: 1,
+    name: 'January'
+}, {
+    value: 2,
+    name: 'February'
+}, {
+    value: 3,
+    name: 'March'
+}, {
+    value: 4,
+    name: 'April'
+}, {
+    value: 5,
+    name: 'May'
+}, {
+    value: 6,
+    name: 'June'
+}, {
+    value: 7,
+    name: 'July'
+}, {
+    value: 8,
+    name: 'August'
+}, {
+    value: 9,
+    name: 'September'
+}, {
+    value: 10,
+    name: 'October'
+}, {
+    value: 11,
+    name: 'November'
+}, {
+    value: 12,
+    name: 'December'
+}];
+const MEASURES = [
+    {
+        measure: {
+            localIdentifier: 'm1',
+            definition: {
+                measureDefinition: {
+                    item: {
+                        uri: GROSS_PROFIT_MEASURE
+                    }
+                }
+            },
+            alias: '$ Gross Profit'
+        }
+    }
+];
+const VIEW_BY = {
+    visualizationAttribute:
+    {
+        displayForm: {
+            uri: DATE_ATTRIBUTE_IN_MONTHS
+        },
+        localIdentifier: 'a1'
+    }
+};
 
 class App extends Component {
+    constructor(props) {
+        super(props);
 
-    getMonthFilter() {
+        this.state = {
+            selectedMonth: 1,
+            filters: []
+        };
+
+        this.onSelectedMonthChange = this.onSelectedMonthChange.bind(this);
+    }
+
+    componentDidMount() {
+        const filters = [this.getMonthFilter(this.state.selectedMonth)];
+
+        this.setState(prevState => ({
+            ...prevState,
+            filters
+        }));
+    }
+
+    getFirstDateStrOfMonth(month = 1, year = (new Date()).getFullYear()) {
+        if (month < 0 || month > 12) {
+            return null;
+        }
+
+        return `${ year }-${ month < 10 ? `0${ month }` : month }-01`;
+    }
+
+    getLastDateStrOfMonth(month = 1, year = (new Date()).getFullYear()) {
+        switch (true) {
+            case month > 0 && month < 12:
+                const lastDate = new Date(year, month, 0);
+                const day = lastDate.getDate();
+                return `${ year }-${ month < 10 ? `0${ month }` : month }-${ day < 10 ? `0${ day }` : day }`;
+            case month === 12:
+                return `${ year }-12-31`;
+            default:console.log(month, typeof month);
+                return null;
+        }
+    }
+
+    getMonthFilter(month) {
+        const from = this.getFirstDateStrOfMonth(month, 2016);
+        const to = this.getLastDateStrOfMonth(month, 2016);
+
         return {
             absoluteDateFilter: {
                 dataSet: {
-                    uri: dateAttribute
+                    uri: DATE_ATTRIBUTE
                 },
-                from: '2016-01-01',
-                to: '2016-01-31'
+                from,
+                to
             }
 
         }
     }
 
-    getMeasures() {
-        return [
-            {
-                measure: {
-                    localIdentifier: 'm1',
-                    definition: {
-                        measureDefinition: {
-                            item: {
-                                uri: grossProfitMeasure
-                            }
-                        }
-                    },
-                    alias: '$ Gross Profit'
-                }
-            }
-        ]
-    }
-
-    getViewBy() {
-        return {
-            visualizationAttribute:
-            {
-                displayForm: {
-                    uri: dateAttributeInMonths
-                },
-                localIdentifier: 'a1'
-            }
-        }
-    }
-
-    renderDropdown() {
-        return (
-            <select defaultValue="1">
-                <option value="1">January</option>
-                <option value="2">February</option>
-                <option value="3">March</option>
-                <option value="4">April</option>
-                <option value="5">May</option>
-                <option value="6">June</option>
-                <option value="7">July</option>
-                <option value="8">August</option>
-                <option value="9">September</option>
-                <option value="10">October</option>
-                <option value="11">November</option>
-                <option value="12">December</option>
-            </select>
-        )
+    onSelectedMonthChange(month) {
+        const selectedMonth = parseInt(month, 10) || 1;
+        this.setState(prevState => ({
+            ...prevState,
+            selectedMonth,
+            filters: [this.getMonthFilter(selectedMonth)]
+        }))
     }
 
     render() {
-        const projectId = 'xms7ga4tf3g3nzucd8380o2bev8oeknp';
-        const filters = [this.getMonthFilter()];
-        const measures = this.getMeasures();
-        const viewBy = this.getViewBy();
-
         return (
             <div className="App">
-                <h1>$ Gross Profit in month {this.renderDropdown()} 2016</h1>
-                <div>
-                    <ColumnChart
-                        measures={measures}
-                        filters={filters}
-                        projectId={projectId}
-                    />
-                </div>
+                <h1>
+                    $ Gross Profit in month 
+                    <Dropdown
+                        data={ MONTH_LIST }
+                        selectedValue={ this.state.selectedMonth }
+                        valueKey='value'
+                        nameKey='name'
+                        selectItemValue={ this.onSelectedMonthChange } /> 2016
+                </h1>
+                {
+                    (this.state.selectedMonth && this.state.filters.length) ? <div>
+                        <ColumnChart
+                            measures={ MEASURES }
+                            filters={ this.state.filters }
+                            projectId={ PROJECT_ID }
+                        />
+                    </div> : null
+                }
                 <h1>$ Gross Profit - All months</h1>
                 <div>
                     <ColumnChart
-                        measures={measures}
-                        viewBy={viewBy}
-                        projectId={projectId}
+                        measures={ MEASURES }
+                        viewBy={ VIEW_BY }
+                        projectId={ PROJECT_ID }
                     />
                 </div>
             </div>
